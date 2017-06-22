@@ -18,7 +18,9 @@ Here we provide instructions for installing Python and TensorFlow on Linux Ubunt
         
     Step 2: Install TensorFlow with virtualenv.
 
-      Virtualenv is a virtual Python environment isolated from other Python development, incapable of interfering with or being affected by other Python programs on the same machine. To start working with TensorFlow, you simply need to "activate" the virtual environment. When you are done using TensorFlow, you may "deactivate" the environment.
+      Virtualenv is a virtual Python environment isolated from other Python development, incapable of interfering with or being affected by other Python programs on the same machine. 
+      To start working with TensorFlow, you simply need to "activate" the virtual environment. 
+      When you are done using TensorFlow, you may "deactivate" the environment.
       
       Step 2.1: Create a virtualenv environment using the following command
       
