@@ -39,8 +39,17 @@ Here we provide instructions for installing Python and TensorFlow on Linux Ubunt
 
         # with NVIDIA-GPU support
         URL=https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
+
+      Step 2.4: Check TensorFlow version, installation, device
       
-      Step 2.4: Deactivate the virtualenv environment using the following command
+        $ python
+        >>> import tensorflow as tf
+        >>> print(tf__version__)
+        >>> sess = tf.InteractiveSession()
+        >>> sess.close()
+        >>> quit()
+
+      Step 2.5: Deactivate the virtualenv environment using the following command
       
         (tensorflow)$ deactivate
         
