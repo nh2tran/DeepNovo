@@ -30,11 +30,15 @@ Here we provide instructions for installing Python and TensorFlow on Linux Ubunt
       
         $ source ~/tensorflow/bin/activate
         
-      Step 2.3: Install TensorFlow using one of the following commands
+      Step 2.3: Install TensorFlow version r.0.10 using the following command where URL depends on CPU/GPU support
       
-        (tensorflow)$ pip install --upgrade tensorflow # with CPU support only
-        
-        (tensorflow)$ pip install --upgrade tensorflow-gpu  # with NVIDIA-GPU support
+        (tensorflow)$ pip install --upgrade URL 
+
+        # with CPU support only
+        URL=https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
+
+        # with NVIDIA-GPU support
+        URL=https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
       
       Step 2.4: Deactivate the virtualenv environment using the following command
       
