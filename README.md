@@ -1,9 +1,7 @@
 # DeepNovo
 Project: De novo Peptide Sequencing by Deep Learning.
 
-Author: Hieu Tran, Research Fellow at University of Waterloo, Canada.
-
-Email: nh2tran@uwaterloo.ca
+Author: Hieu Tran, Research Fellow at University of Waterloo, Canada. Email: nh2tran@uwaterloo.ca
 
 Publication: De novo Peptide Sequencing by Deep Learning. Proceedings of the National Academy of Sciences, 2017. 
 
