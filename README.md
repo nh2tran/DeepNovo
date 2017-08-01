@@ -3,7 +3,7 @@ Project: De novo Peptide Sequencing by Deep Learning.
 
 Author: Hieu Tran.
 
-Publication: De novo Peptide Sequencing by Deep Learning. _Proceedings of the National Academy of Sciences, 2017_. 
+Publication: **De novo Peptide Sequencing by Deep Learning**. _Proceedings of the National Academy of Sciences, 2017_. 
 
 Data repository: ftp://massive.ucsd.edu/MSV000081382
 
