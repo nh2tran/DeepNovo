@@ -2,13 +2,13 @@
 
 Project: De novo Peptide Sequencing by Deep Learning.
 
-Author: Hieu Tran.
+Author: Hieu Tran (@nh2tran, hieutran1985@gmail.com).
 
 Publication: De novo Peptide Sequencing by Deep Learning. *Proceedings of the National Academy of Sciences, 2017*. 
 
 Data repository: ftp://massive.ucsd.edu/MSV000081382
 
-#
+##
 
 DeepNovo is implemented and tested with Python 2.7 and TensorFlow r0.10. In addition, DeepNovo also uses Numpy and Cython.
 
@@ -64,4 +64,4 @@ Here we provide instructions for installing Python and TensorFlow on Linux Ubunt
         
         $ pip install Cython
         
-  To use DeepNovo in the TensorFlow enviroment, you need to activate/deactivate the enviroment as mentioned earlier. Further details of DeepNovo usage are provided in the README files in each folder.
+To use DeepNovo in the TensorFlow enviroment, you need to activate/deactivate the enviroment as mentioned earlier. Further details of DeepNovo usage are provided in the README files in each folder.
