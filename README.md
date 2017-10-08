@@ -16,7 +16,7 @@ More details are available in our publications:
 
 - De novo peptide sequencing by deep learning. *Proceedings of the National Academy of Sciences, 2017*.
 
-*If you want to use the models in our PNAS paper, please use the branch PNAS*.
+**If you want to use the models in our PNAS paper, please use the branch PNAS**.
 
 ## Update version 0.0.1
 
