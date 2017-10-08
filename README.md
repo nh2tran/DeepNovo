@@ -44,32 +44,32 @@ network models.
 
 **Step 0**: Build deepnovo_cython_setup to accelerate Python with C.
 
-    `python deepnovo_cython_setup.py build_ext --inplace`
+    python deepnovo_cython_setup.py build_ext --inplace
 
 **Step 1**: Test a pre-trained model with DeepNovo de novo sequencing
 
-    `python deepnovo_main.py --train_dir train.example --decode --beam_search --beam_size 5`
+    python deepnovo_main.py --train_dir train.example --decode --beam_search --beam_size 5
 
 The testing mgf file is defined in "deepnovo_config.py", for example:
-    `decode_test_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"`
+    decode_test_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
 
 **Step 2**: Test a pre-trained model with DeepNovo database search
 
-    `python deepnovo_main.py --train_dir train.example --search_db`
+    python deepnovo_main.py --train_dir train.example --search_db
 
 The testing mgf file is defined in "deepnovo_config.py", for example:
-    `input_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"`
+    input_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
         
 The results are written to the model folder "train.example".
 
 **Step 3**: Train a DeepNovo model using the following command.
 
-    `python deepnovo_main.py --train_dir train.example --train`
+    python deepnovo_main.py --train_dir train.example --train
 
 The training mgf files are defined in "deepnovo_config.py", for example:
-    `input_file_train = "data.training/yeast.low.coon_2013/peaks.db.mgf.train.dup"`
-    `input_file_valid = "data.training/yeast.low.coon_2013/peaks.db.mgf.valid.dup"`
-    `input_file_test = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"`
+    input_file_train = "data.training/yeast.low.coon_2013/peaks.db.mgf.train.dup"
+    input_file_valid = "data.training/yeast.low.coon_2013/peaks.db.mgf.valid.dup"
+    input_file_test = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
 
 The model files will be written to the training folder "train.example".
 
