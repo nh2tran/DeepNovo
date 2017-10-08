@@ -1,8 +1,29 @@
 # DeepNovo
 
-Project: De novo Peptide Sequencing by Deep Learning.
+## Update version 0.0.1
 
-Author: Hieu Tran (@nh2tran, hieutran1985@gmail.com).
+We have added the database search function into DeepNovo. Our goal is to combine 
+two modules de novo sequencing and database search into a single deep learning 
+framework for peptide identification, and to integrate de Bruijn graph assembly 
+technique to offer a complete solution to the problem of protein identification 
+from tandem mass spectrometry data. 
+
+The following updates are also included in this version: 
+
+- The implementation has been upgraded and tested on TensorFlow 1.2.
+
+- The code has been cleaned up with PEP8 and TensorFlow pylint guides, but many 
+docstrings are still to be added.
+
+- Functional modules including I/O, training, de novo sequencing, database search, 
+and testing should be group into separate worker classes. Same for the neural network models. 
+
+If you want to use the models in our PNAS paper, please use the branch PNAS and 
+instructions below.
+
+##
+
+Project: De novo Peptide Sequencing by Deep Learning.
 
 Publication: De novo Peptide Sequencing by Deep Learning. *Proceedings of the National Academy of Sciences, 2017*. 
 
