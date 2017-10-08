@@ -2,7 +2,7 @@
 
 ## Protein Identification with Deep Learning: from abc to xyz.
 
-### Update version 0.0.1
+## Update version 0.0.1
 
 We have added the database search function into DeepNovo. Our goal is to combine 
 two modules de novo sequencing and database search into a single deep learning 
@@ -25,17 +25,15 @@ docstrings are still to be added.
 and testing should be group into separate worker classes. Same for the neural network models. 
 
 *If you want to use the models in our PNAS paper, please use the branch PNAS and 
-instructions below.*
+instructions of the project below.*
 
-### Project: De novo Peptide Sequencing by Deep Learning.
+## Project: De novo Peptide Sequencing by Deep Learning.
 
-Publication: De novo Peptide Sequencing by Deep Learning. 
-
-(*Proceedings of the National Academy of Sciences, 2017*) 
+Publication: De novo Peptide Sequencing by Deep Learning. *Proceedings of the National Academy of Sciences, 2017*.
 
 Data repository: ftp://massive.ucsd.edu/MSV000081382
 
-###
+##
 
 DeepNovo is implemented and tested with Python 2.7 and TensorFlow r0.10. In addition, DeepNovo also uses Numpy and Cython.
 
