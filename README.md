@@ -1,12 +1,17 @@
 # DeepNovo
 
-## Update version 0.0.1
+## Protein Identification with Deep Learning: from abc to xyz.
+
+### Update version 0.0.1
 
 We have added the database search function into DeepNovo. Our goal is to combine 
 two modules de novo sequencing and database search into a single deep learning 
-framework for peptide identification, and to integrate de Bruijn graph assembly 
-technique to offer a complete solution to the problem of protein identification 
-from tandem mass spectrometry data. 
+framework for peptide identification. Furthermore, de Bruijn graph assembly 
+technique is integrated to offer a complete solution to the problem of protein 
+identification from tandem mass spectrometry data. 
+
+The pre-trained model, training and testing data can be downloaded from here:
+[Model and Data] (https://drive.google.com/open?id=0By9IxqHK5MdWalJLSGliWW1RY2c)
 
 The following updates are also included in this version: 
 
@@ -18,14 +23,13 @@ docstrings are still to be added.
 - Functional modules including I/O, training, de novo sequencing, database search, 
 and testing should be group into separate worker classes. Same for the neural network models. 
 
-If you want to use the models in our PNAS paper, please use the branch PNAS and 
-instructions below.
+*If you want to use the models in our PNAS paper, please use the branch PNAS and 
+instructions below.*
 
-##
+## Project: De novo Peptide Sequencing by Deep Learning.
 
-Project: De novo Peptide Sequencing by Deep Learning.
-
-Publication: De novo Peptide Sequencing by Deep Learning. *Proceedings of the National Academy of Sciences, 2017*. 
+Publication: De novo Peptide Sequencing by Deep Learning. 
+(*Proceedings of the National Academy of Sciences, 2017*) 
 
 Data repository: ftp://massive.ucsd.edu/MSV000081382
 
