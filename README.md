@@ -40,3 +40,46 @@ docstrings are still to be added.
 and testing should be group into separate worker classes. Same for the neural 
 network models. 
 
+## How to use DeepNovo?
+
+**Step 0**: Build deepnovo_cython_setup to accelerate Python with C.
+
+    `python deepnovo_cython_setup.py build_ext --inplace`
+
+**Step 1**: Test a pre-trained model with DeepNovo de novo sequencing
+
+    `python deepnovo_main.py --train_dir train.example --decode --beam_search --beam_size 5`
+
+The testing mgf file is defined in "deepnovo_config.py", for example:
+    `decode_test_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"`
+
+**Step 2**: Test a pre-trained model with DeepNovo database search
+
+    `python deepnovo_main.py --train_dir train.example --search_db`
+
+The testing mgf file is defined in "deepnovo_config.py", for example:
+    `input_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"`
+        
+The results are written to the model folder "train.example".
+
+**Step 3**: Train a DeepNovo model using the following command.
+
+    `python deepnovo_main.py --train_dir train.example --train`
+
+The training mgf files are defined in "deepnovo_config.py", for example:
+    `input_file_train = "data.training/yeast.low.coon_2013/peaks.db.mgf.train.dup"`
+    `input_file_valid = "data.training/yeast.low.coon_2013/peaks.db.mgf.valid.dup"`
+    `input_file_test = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"`
+
+The model files will be written to the training folder "train.example".
+
+**Step 4**: De novo sequencing.
+
+Currently DeepNovo supports training and testing modes. Hence, the real peptides 
+need to be provided in the input mgf files with tag "SEQ=". If you want to do 
+de novo sequencing, you can provide any arbitraty sequence for tag "SEQ=" to 
+bypass the reading procedure. In the output file, you can ignore the calculation 
+of accuracy and simply use the predicted peptide sequence.
+
+All other options can be found in "deepnovo_config.py".
+    
