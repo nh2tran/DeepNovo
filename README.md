@@ -11,7 +11,7 @@ technique is integrated to offer a complete solution to the problem of protein
 identification from tandem mass spectrometry data. 
 
 The pre-trained model, training and testing data can be downloaded from here:
-[Model and Data] (https://drive.google.com/open?id=0By9IxqHK5MdWalJLSGliWW1RY2c)
+https://drive.google.com/open?id=0By9IxqHK5MdWalJLSGliWW1RY2c
 
 The following updates are also included in this version: 
 
