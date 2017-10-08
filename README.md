@@ -11,6 +11,7 @@ technique is integrated to offer a complete solution to the problem of protein
 identification from tandem mass spectrometry data. 
 
 The pre-trained model, training and testing data can be downloaded from here:
+
 https://drive.google.com/open?id=0By9IxqHK5MdWalJLSGliWW1RY2c
 
 The following updates are also included in this version: 
@@ -26,14 +27,15 @@ and testing should be group into separate worker classes. Same for the neural ne
 *If you want to use the models in our PNAS paper, please use the branch PNAS and 
 instructions below.*
 
-## Project: De novo Peptide Sequencing by Deep Learning.
+### Project: De novo Peptide Sequencing by Deep Learning.
 
 Publication: De novo Peptide Sequencing by Deep Learning. 
+
 (*Proceedings of the National Academy of Sciences, 2017*) 
 
 Data repository: ftp://massive.ucsd.edu/MSV000081382
 
-##
+###
 
 DeepNovo is implemented and tested with Python 2.7 and TensorFlow r0.10. In addition, DeepNovo also uses Numpy and Cython.
 
