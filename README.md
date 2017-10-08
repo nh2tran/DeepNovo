@@ -50,9 +50,9 @@ DeepNovo is implemented and tested with Python 2.7, TensorFlow 1.2 and Cython.
 
 **Step 1**: Test a pre-trained model with DeepNovo de novo sequencing
 
-    python deepnovo_main.py --train_dir train.example --decode --beam_search --beam_size 5
+  `python deepnovo_main.py --train_dir train.example --decode --beam_search --beam_size 5`
 
-The testing mgf file is defined in "deepnovo_config.py", for example:
+  The testing mgf file is defined in "deepnovo_config.py", for example:
 
     decode_test_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
 
