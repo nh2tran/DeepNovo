@@ -12,9 +12,9 @@ and use de Bruijn graph to assemble peptides into protein sequences.
 
 More details are available in our publications: 
 
-Protein identification with deep learning: from abc to xyz. *arXiv (to be updated)*.
+- Protein identification with deep learning: from abc to xyz. *arXiv (to be updated)*.
 
-De novo peptide sequencing by deep learning. *Proceedings of the National Academy of Sciences, 2017*.
+- De novo peptide sequencing by deep learning. *Proceedings of the National Academy of Sciences, 2017*.
 
 *If you want to use the models in our PNAS paper, please use the branch PNAS*.
 
