@@ -125,7 +125,7 @@ class WorkerDB(object):
 
     print("WorkerDB.search_db() - open tensorflow session")
     session = tf.Session()
-    model.restore(session)
+    model.restore_model(session)
 
     worker_io.open_input()
     worker_io.get_location()
@@ -163,8 +163,9 @@ class WorkerDB(object):
     input_feed = {}
     spectrum_holder = np.array([spectrum["spectrum_holder"]
                                 for spectrum in spectrum_batch])
-    input_feed[model.input_spectrum.name] = spectrum_holder
-    output_feed = [model.lstm_state0_forward, model.lstm_state0_backward]
+    input_feed[model.input_dict["spectrum"].name] = spectrum_holder
+    output_feed = [model.output_forward["lstm_state0"],
+                   model.output_backward["lstm_state0"]]
     ((state0_c_forward, state0_h_forward),
      (state0_c_backward, state0_h_backward)) = session.run(fetches=output_feed,
                                                            feed_dict=input_feed)
@@ -204,8 +205,8 @@ class WorkerDB(object):
           state0_h_forward[spectrum_index],
           candidate_forward_list,
           model,
-          model.output_log_prob_forward,
-          model.lstm_state_forward,
+          model.output_forward["logprob"],
+          model.output_forward["lstm_state"],
           session,
           direction=0)
       #   and using the backward model
@@ -216,8 +217,8 @@ class WorkerDB(object):
           state0_h_backward[spectrum_index],
           candidate_backward_list,
           model,
-          model.output_log_prob_backward,
-          model.lstm_state_backward,
+          model.output_backward["logprob"],
+          model.output_backward["lstm_state"],
           session,
           direction=1)
 
@@ -283,7 +284,7 @@ class WorkerDB(object):
                       state0_h,
                       candidate_list,
                       model,
-                      model_output_log_prob,
+                      model_output_logprob,
                       model_lstm_state,
                       session,
                       direction):
@@ -340,12 +341,12 @@ class WorkerDB(object):
 
       # model feed
       input_feed = {}
-      input_feed[model.input_AA_id[1].name] = minibatch_AA_id
-      input_feed[model.input_intensity.name] = minibatch_intensity
-      input_feed[model.input_state[0].name] = minibatch_state_c
-      input_feed[model.input_state[1].name] = minibatch_state_h
+      input_feed[model.input_dict["AAid"][1].name] = minibatch_AA_id
+      input_feed[model.input_dict["intensity"].name] = minibatch_intensity
+      input_feed[model.input_dict["lstm_state"][0].name] = minibatch_state_c
+      input_feed[model.input_dict["lstm_state"][1].name] = minibatch_state_h
       # and run
-      output_feed = [model_output_log_prob, model_lstm_state]
+      output_feed = [model_output_logprob, model_lstm_state]
       output_logprob, (minibatch_state_c, minibatch_state_h) = session.run(
           fetches=output_feed,
           feed_dict=input_feed)

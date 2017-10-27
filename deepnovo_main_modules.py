@@ -1240,13 +1240,13 @@ def decode_true_feeding_01(sess, model, direction, data_set):
 
   # FORWARD/BACKWARD setting
   if direction == 0:
-    model_lstm_state0 = model.lstm_state0_forward
-    model_output_log_prob = model.output_log_prob_forward
-    model_lstm_state = model.lstm_state_forward
+    model_lstm_state0 = model.output_forward["lstm_state0"]
+    model_output_log_prob = model.output_forward["logprob"]
+    model_lstm_state = model.output_forward["lstm_state"]
   elif direction == 1:
-    model_lstm_state0 = model.lstm_state0_backward
-    model_output_log_prob = model.output_log_prob_backward
-    model_lstm_state = model.lstm_state_backward
+    model_lstm_state0 = model.output_backward["lstm_state0"]
+    model_output_log_prob = model.output_backward["logprob"]
+    model_lstm_state = model.output_backward["lstm_state"]
 
   data_set_len = len(data_set)
   # recall that a data_set[spectrum_id] includes the following
@@ -1270,7 +1270,7 @@ def decode_true_feeding_01(sess, model, direction, data_set):
 
     block_spectrum = np.array([data_set[x][0] for x in stack])
     input_feed = {}
-    input_feed[model.input_spectrum.name] = block_spectrum
+    input_feed[model.input_dict["spectrum"].name] = block_spectrum
     output_feed = model_lstm_state0
     stack_c_state0, stack_h_state0 = sess.run(fetches=output_feed,
                                               feed_dict=input_feed)
@@ -1300,15 +1300,15 @@ def decode_true_feeding_01(sess, model, direction, data_set):
       # FEED & RUN
       input_feed = {}
       # nobi
-      input_feed[model.input_AA_id[0].name] = block_AA_id_1
-      input_feed[model.input_AA_id[1].name] = block_AA_id_2
-      input_feed[model.input_intensity.name] = block_candidate_intensity
+      input_feed[model.input_dict["AAid"][0].name] = block_AA_id_1
+      input_feed[model.input_dict["AAid"][1].name] = block_AA_id_2
+      input_feed[model.input_dict["intensity"].name] = block_candidate_intensity
       # lstm.len_full
-      input_feed[model.input_state[0].name] = stack_c_state
-      input_feed[model.input_state[1].name] = stack_h_state
+      input_feed[model.input_dict["lstm_state"][0].name] = stack_c_state
+      input_feed[model.input_dict["lstm_state"][1].name] = stack_h_state
       # nobi
-      #~ input_feed[model.input_state[0].name] = block_c_state0[stack_index]
-      #~ input_feed[model.input_state[1].name] = block_h_state0[stack_index]
+      #~ input_feed[model.input_dict["lstm_state"][0].name] = block_c_state0[stack_index]
+      #~ input_feed[model.input_dict["lstm_state"][1].name] = block_h_state0[stack_index]
       #
       # lstm.len_full
       output_feed = [model_output_log_prob, model_lstm_state]
@@ -1474,18 +1474,18 @@ def decode_beam_search_01(sess,
   # FORWARD/BACKWARD setting
   if direction == 0:
 
-    model_lstm_state0 = model.lstm_state0_forward
-    model_output_log_prob = model.output_log_prob_forward
-    model_lstm_state = model.lstm_state_forward
+    model_lstm_state0 = model.output_forward["lstm_state0"]
+    model_output_log_prob = model.output_forward["logprob"]
+    model_lstm_state = model.output_forward["lstm_state"]
 
     FIRST_LABEL = deepnovo_config.GO_ID
     LAST_LABEL = deepnovo_config.EOS_ID
 
   elif direction == 1:
 
-    model_lstm_state0 = model.lstm_state0_backward
-    model_output_log_prob = model.output_log_prob_backward
-    model_lstm_state = model.lstm_state_backward
+    model_lstm_state0 = model.output_backward["lstm_state0"]
+    model_output_log_prob = model.output_backward["logprob"]
+    model_lstm_state = model.output_backward["lstm_state"]
 
     FIRST_LABEL = deepnovo_config.EOS_ID
     LAST_LABEL = deepnovo_config.GO_ID
@@ -1520,7 +1520,7 @@ def decode_beam_search_01(sess,
 
     block_spectrum = np.array([data_set[x][1] for x in stack])
     input_feed = {}
-    input_feed[model.input_spectrum.name] = block_spectrum
+    input_feed[model.input_dict["spectrum"].name] = block_spectrum
     output_feed = model_lstm_state0
     stack_c_state0, stack_h_state0 = sess.run(fetches=output_feed,
                                               feed_dict=input_feed)
@@ -1662,11 +1662,11 @@ def decode_beam_search_01(sess,
       block_candidate_intensity = np.array(block_candidate_intensity)
 
       input_feed = {}
-      input_feed[model.input_AA_id[0].name] = block_AA_ID_1 # nobi
-      input_feed[model.input_AA_id[1].name] = block_AA_ID_2 # nobi
-      input_feed[model.input_intensity.name] = block_candidate_intensity
-      input_feed[model.input_state[0].name] = block_c_state
-      input_feed[model.input_state[1].name] = block_h_state
+      input_feed[model.input_dict["AAid"][0].name] = block_AA_ID_1 # nobi
+      input_feed[model.input_dict["AAid"][1].name] = block_AA_ID_2 # nobi
+      input_feed[model.input_dict["intensity"].name] = block_candidate_intensity
+      input_feed[model.input_dict["lstm_state"][0].name] = block_c_state
+      input_feed[model.input_dict["lstm_state"][1].name] = block_h_state
 
       output_feed = [model_output_log_prob, model_lstm_state] # lstm.len_full
       #~ output_feed = model_output_log_prob # nobi
@@ -1977,21 +1977,24 @@ def decode(input_file=deepnovo_config.decode_test_file):
 
     # DECODING MODEL
     print("DECODING MODEL")
-    model = deepnovo_model.DecodingModel()
+    #~ model = deepnovo_model.DecodingModel()
+    model = deepnovo_model.ModelInference()
+    model.build_model()
+    model.restore_model(sess)
 
 #~     test_writer = tf.train.SummaryWriter("test_log", sess.graph)
 #~     test_writer.close()
 
     # LOAD PARAMETERS
-    print("LOAD PARAMETERS")
-    saver = tf.train.Saver(tf.global_variables())
-    ckpt = tf.train.get_checkpoint_state(deepnovo_config.FLAGS.train_dir)
-    if ckpt and tf.gfile.Exists(ckpt.model_checkpoint_path+".index"):
-      print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
-      saver.restore(sess, ckpt.model_checkpoint_path)
-    else:
-      print("ERROR: model parameters not found.")
-      sys.exit()
+    #~ print("LOAD PARAMETERS")
+    #~ saver = tf.train.Saver(tf.global_variables())
+    #~ ckpt = tf.train.get_checkpoint_state(deepnovo_config.FLAGS.train_dir)
+    #~ if ckpt and tf.gfile.Exists(ckpt.model_checkpoint_path+".index"):
+      #~ print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
+      #~ saver.restore(sess, ckpt.model_checkpoint_path)
+    #~ else:
+      #~ print("ERROR: model parameters not found.")
+      #~ sys.exit()
 
     # FIND SPECTRA LOCATIONS
     spectra_file_location = inspect_file_location(deepnovo_config.data_format,

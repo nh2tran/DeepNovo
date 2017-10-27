@@ -70,6 +70,9 @@ class WorkerTest(object):
         target_dict_db[scan] = target
       else:
         print("target not found: ", target_simplied)
+    # uncomment to consider all target peptides. i.e. no filtering
+    #~ target_dict_db = self.target_dict
+    #
     target_count_db = len(target_dict_db)
     target_len_db = sum([len(x) for x in target_dict_db.itervalues()])
 

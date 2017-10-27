@@ -33,7 +33,9 @@ def main(_):
   elif deepnovo_config.FLAGS.decode:
     deepnovo_main_modules.decode()
   elif deepnovo_config.FLAGS.search_db:
-    model = deepnovo_model.DecodingModel()
+    #~ model = deepnovo_model.DecodingModel()
+    model = deepnovo_model.ModelInference()
+    model.build_model()
     worker_io = deepnovo_worker_io.WorkerIO(
         input_file=deepnovo_config.input_file,
         output_file=deepnovo_config.output_file)
