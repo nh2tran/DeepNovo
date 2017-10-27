@@ -20,6 +20,26 @@ More details are available in our publications:
 
 **If you want to use the models in our PNAS paper, please use the branch PNAS**.
 
+## Latest update
+
+- Replaced DecodingModel by ModelInference to make the code of building neural
+network models easy to understand and for further development.
+
+- Updated de novo sequencing function, `decode()`, and database search function,
+`search_db()`, to work with ModelInference.
+
+- What's next: clean up the code of TrainingModel, training and de novo sequencing
+functions.
+
+Those updates still work with the pre-trained model, training and testing data
+provided earlier (version 0.0.1 below).
+
+We have decided to still use low-level functions of TensorFlow to construct
+neural networks. We think they could help to get better understanding of the
+basic details of our model and how to improve it. The network architecture is
+not so complicated, so the code is not too messy even with low-level functions.
+We will eventually update with high-level ones such as tf.layers and others.
+
 ## Update version 0.0.1
 
 We have added the database search function into DeepNovo. Both modules de novo 
