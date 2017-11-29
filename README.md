@@ -22,8 +22,8 @@ More details are available in our publications:
 
 ## Latest updates
 
-- The first-ever hybrid tool for peptide identification that integrates de novo
-sequencing and database search into the same scoring and sequencing framework.
+- The first-ever hybrid tool for peptide identification that performs de novo
+sequencing and database search under the same scoring and sequencing framework.
 DeepNovo now have three sequencing modes: `search_denovo()`, `search_db()`, and 
 `search_hybrid()`.
 
