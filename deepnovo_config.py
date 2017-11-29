@@ -59,16 +59,32 @@ tf.app.flags.DEFINE_boolean("beam_search",
                             "Set to True for beam search.")
 
 tf.app.flags.DEFINE_integer("beam_size",
-                            1,
+                            5,
                             "Number of optimal paths to search during decoding.")
 
 tf.app.flags.DEFINE_boolean("search_db",
                             False,
-                            "Set to True to perform a database search.")
+                            "Set to True to do a database search.")
+
+tf.app.flags.DEFINE_boolean("search_denovo",
+                            False,
+                            "Set to True to do a denovo search.")
+
+tf.app.flags.DEFINE_boolean("search_hybrid",
+                            False,
+                            "Set to True to do a hybrid, db+denovo, search.")
 
 tf.app.flags.DEFINE_boolean("test",
                             False,
                             "Set to True to test the prediction accuracy.")
+
+tf.app.flags.DEFINE_boolean("header_seq",
+                            True,
+                            "Set to False if peptide sequence is not provided.")
+
+tf.app.flags.DEFINE_boolean("decoy",
+                            False,
+                            "Set to True to search decoy database.")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -373,21 +389,48 @@ print("max_gradient_norm ", max_gradient_norm)
 
 # YEAST-LOW-COON_2013-PEAKS-DB-DUP
 data_format = "mgf"
-db_fasta_file = "data/uniprot_sprot.yeast.fasta"
 cleavage_rule = "trypsin"
 num_missed_cleavage = 2
 fixed_mod_list = ['C']
 var_mod_list = ['N', 'Q', 'M']
-mass_tolerance = 0.01 # Da
-ppm = 10.0/1000000 # ppm (20 better) # instead of absolute 0.01 Da
-input_file_train = "data.training/yeast.low.coon_2013/peaks.db.mgf.train.dup"
-input_file_valid = "data.training/yeast.low.coon_2013/peaks.db.mgf.valid.dup"
-input_file_test = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
-decode_test_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
-input_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
-output_file = FLAGS.train_dir + "/output.deepnovo_db.tab"
-target_file = input_file + ".target"
-predicted_file = output_file
+precursor_mass_tolerance = 0.01 # Da
+precursor_mass_ppm = 10.0/1000000 # ppm (20 better) # instead of absolute 0.01 Da
+knapsack_file = "knapsack.npy"
+# training/testing/decoding files
+#~ input_file_train = "data.training/yeast.low.coon_2013/peaks.db.mgf.train.dup"
+#~ input_file_valid = "data.training/yeast.low.coon_2013/peaks.db.mgf.valid.dup"
+#~ input_file_test = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
+#~ decode_test_file = "data.training/yeast.low.coon_2013/peaks.db.mgf.test.dup"
+#~ input_file_train = "data.training/yeast.low.exclude_coon_2013/peaks.db.mgf.train.dup"
+#~ input_file_valid = "data.training/yeast.low.exclude_coon_2013/peaks.db.mgf.valid.dup"
+#~ input_file_test = "data.training/yeast.low.exclude_coon_2013/peaks.db.mgf.test.dup"
+#~ decode_test_file = "data.training/yeast.low.exclude_coon_2013/peaks.db.mgf.test.dup"
+#~ input_file_train = "data.training/yeast.low.exclude_heinemann_2015/peaks.db.mgf.train.dup"
+#~ input_file_valid = "data.training/yeast.low.exclude_heinemann_2015/peaks.db.mgf.valid.dup"
+#~ input_file_test = "data.training/yeast.low.exclude_heinemann_2015/peaks.db.mgf.test.dup"
+#~ decode_test_file = "data.training/yeast.low.exclude_heinemann_2015/peaks.db.mgf.test.dup"
+input_file_train = "data.training/dia.xchen.nov27/fraction_1.mgf.split.train.dup"
+input_file_valid = "data.training/dia.xchen.nov27/fraction_1.mgf.split.valid.dup"
+input_file_test = "data.training/dia.xchen.nov27/fraction_1.mgf.split.test.dup"
+decode_test_file = "data.training/dia.xchen.nov27/fraction_1.mgf.split.test.dup"
+# denovo files
+denovo_input_file = "data.training/dia.xchen.nov27/fraction_1.mgf.split.test.dup"
+denovo_output_file = denovo_input_file + ".deepnovo_denovo"
+# db files
+db_fasta_file = "data/uniprot_sprot.human.fasta"
+db_input_file = "data.training/dia.xchen.nov27/fraction_1.mgf.split.test.dup"
+db_output_file = db_input_file + ".deepnovo_db"
+if FLAGS.decoy:
+  db_output_file += ".decoy"
+# hybrid files
+hybrid_input_file = "data.training/yeast.low.heinemann_2015/peaks.db.mgf.test.dup"
+hybrid_denovo_file = hybrid_input_file + ".deepnovo_hybrid_denovo"
+hybrid_output_file = hybrid_input_file + ".deepnovo_hybrid"
+if FLAGS.decoy:
+  hybrid_output_file += ".decoy"
+# test accuracy
 predicted_format = "deepnovo"
-accuracy_file = "accuracy.deepnovo_db.tab"
+target_file = "data.training/dia.xchen.nov27/fraction_1.mgf.split.test.dup.target"
+predicted_file = denovo_output_file
+accuracy_file = predicted_file + ".accuracy"
 # ==============================================================================

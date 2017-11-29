@@ -45,11 +45,23 @@ class WorkerTest(object):
     self.predicted_list = []
 
 
-  def test_accuracy(self, db_peptide_list):
+  def test_accuracy(self, db_peptide_list=None):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
     print("WorkerTest.test_accuracy()")
+
+    # write the accuracy of predicted peptides
+    accuracy_file_handle = open(self.accuracy_file, 'w')
+    header_list = ["scan",
+                   "target_sequence",
+                   "predicted_sequence",
+                   "predicted_score",
+                   "recall_AA",
+                   "predicted_len",
+                   "target_len"]
+    header_row = "\t".join(header_list)
+    print(header_row, file=accuracy_file_handle, end="\n")
 
     self._get_target()
     target_count_total = len(self.target_dict)
@@ -58,33 +70,39 @@ class WorkerTest(object):
     # this part is tricky!
     # some target peptides are reported by PEAKS DB but not found in
     #   db_peptide_list due to mistakes in cleavage rules.
-    # we only consider target peptides in db_peptide_list for the moment.
+    # if db_peptide_list is given, we only consider those target peptides,
+    #   otherwise, use all target peptides
     target_dict_db = {}
-    for scan, target in self.target_dict.iteritems():
-      target_simplied = target
-      # remove the extension 'mod' from variable modifications
-      target_simplied = ['M' if x=='Mmod' else x for x in target_simplied]
-      target_simplied = ['N' if x=='Nmod' else x for x in target_simplied]
-      target_simplied = ['Q' if x=='Qmod' else x for x in target_simplied]
-      if target_simplied in db_peptide_list:
-        target_dict_db[scan] = target
-      else:
-        print("target not found: ", target_simplied)
-    # uncomment to consider all target peptides. i.e. no filtering
-    #~ target_dict_db = self.target_dict
-    #
+    if db_peptide_list is not None:
+      for scan, target in self.target_dict.iteritems():
+        target_simplied = target
+        # remove the extension 'mod' from variable modifications
+        target_simplied = ['M' if x=='Mmod' else x for x in target_simplied]
+        target_simplied = ['N' if x=='Nmod' else x for x in target_simplied]
+        target_simplied = ['Q' if x=='Qmod' else x for x in target_simplied]
+        if target_simplied in db_peptide_list:
+          target_dict_db[scan] = target
+        else:
+          print("target not found: ", target_simplied)
+    else:
+      target_dict_db = self.target_dict
     target_count_db = len(target_dict_db)
     target_len_db = sum([len(x) for x in target_dict_db.itervalues()])
+
+    # we also skip target peptides with precursor_mass > MZ_MAX
+    target_dict_db_mass = {}
+    for scan, peptide in target_dict_db.iteritems():
+      if self._compute_peptide_mass(peptide) <= self.MZ_MAX:
+        target_dict_db_mass[scan] = peptide
+    target_count_db_mass = len(target_dict_db_mass)
+    target_len_db_mass = sum([len(x) for x in target_dict_db_mass.itervalues()])
 
     # note that the prediction has already skipped precursor_mass > MZ_MAX
     self._get_predicted()
     predicted_count_mass = len(self.predicted_list)
     predicted_len_mass = sum([len(x["sequence"]) for x in self.predicted_list])
 
-    # we skip target peptides with precursor_mass > MZ_MAX
-    target_count_db_mass = 0
-    target_len_db_mass = 0
-    # we also skip predicted peptides whose scans are not in target_dict_db
+    # we also skip predicted peptides whose scans are not in target_dict_db_mass
     predicted_count_mass_db = 0
     predicted_len_mass_db = 0
     # the recall is calculated on remaining peptides
@@ -94,12 +112,11 @@ class WorkerTest(object):
     for index, predicted in enumerate(self.predicted_list):
 
       scan = predicted["scan"]
-      if scan in target_dict_db:
 
-        target = target_dict_db[scan]
-        target_count_db_mass += 1
+      if scan in target_dict_db_mass:
+
+        target = target_dict_db_mass[scan]
         target_len= len(target)
-        target_len_db_mass += target_len
 
         predicted_count_mass_db += 1
         predicted_len= len(predicted["sequence"])
@@ -111,12 +128,24 @@ class WorkerTest(object):
         recall_AA_total += recall_AA
         if recall_AA == target_len:
           recall_peptide_total += 1
-        else:
-          print("index = ", index)
-          print(scan)
-          print(target)
-          print(predicted["sequence"], predicted["score"])
-          print(recall_AA)
+
+        target_sequence = ",".join(target)
+        predicted_sequence = ",".join(predicted["sequence"])
+        predicted_score = "{0:.2f}".format(predicted["score"])
+        recall_AA = "{0:d}".format(recall_AA)
+        predicted_len = "{0:d}".format(predicted_len)
+        target_len = "{0:d}".format(target_len)
+        print_list = [scan,
+                      target_sequence,
+                      predicted_sequence,
+                      predicted_score,
+                      recall_AA,
+                      predicted_len,
+                      target_len]
+        print_row = "\t".join(print_list)
+        print(print_row, file=accuracy_file_handle, end="\n")
+
+    accuracy_file_handle.close()
 
     print("target_count_total = {0:d}".format(target_count_total))
     print("target_len_total = {0:d}".format(target_len_total))
@@ -141,6 +170,20 @@ class WorkerTest(object):
     print("precision_AA_mass_db  = {0:.4f}".format(recall_AA_total / predicted_len_mass_db))
   
   
+  def _compute_peptide_mass(self, peptide):
+    """TODO(nh2tran): docstring.
+    """
+
+    #~ print("".join(["="] * 80)) # section-separating line ===
+    #~ print("WorkerDB: _compute_peptide_mass()")
+
+    peptide_mass = (deepnovo_config.mass_N_terminus
+                    + sum(deepnovo_config.mass_AA[aa] for aa in peptide)
+                    + deepnovo_config.mass_C_terminus)
+
+    return peptide_mass
+
+
   def _get_predicted(self):
     """TODO(nh2tran): docstring."""
 
@@ -155,10 +198,15 @@ class WorkerTest(object):
         line_split = re.split('\t|\n', line)
         predicted = {}
         predicted["scan"] = line_split[0]
-        predicted["sequence"] = re.split(',', line_split[1])
-        predicted["score"] = float(line_split[2])
-        predicted["position_score"] = [float(x)
-                                       for x in re.split(',', line_split[3])]
+        if line_split[1]:
+          predicted["sequence"] = re.split(',', line_split[1])
+          predicted["score"] = float(line_split[2])
+          predicted["position_score"] = [float(x)
+                                         for x in re.split(',', line_split[3])]
+        else: # empty sequence
+          predicted["sequence"] = []
+          predicted["score"] = -float("inf")
+          predicted["position_score"] = []
         predicted_list.append(predicted)
 
     self.predicted_list = predicted_list

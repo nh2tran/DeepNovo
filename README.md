@@ -20,16 +20,20 @@ More details are available in our publications:
 
 **If you want to use the models in our PNAS paper, please use the branch PNAS**.
 
-## Latest update
+## Latest updates
+
+- The first-ever hybrid tool for peptide identification that integrates de novo
+sequencing and database search into the same scoring and sequencing framework.
+DeepNovo now have three sequencing modes: `search_denovo()`, `search_db()`, and 
+`search_hybrid()`.
+
+- Added decoy database search to estimate False Discovery Rate (FDR). The FDR
+can be used to filter both database search and de novo sequencing results.
 
 - Replaced DecodingModel by ModelInference to make the code of building neural
 network models easy to understand and for further development.
 
-- Updated de novo sequencing function, `decode()`, and database search function,
-`search_db()`, to work with ModelInference.
-
-- What's next: clean up the code of TrainingModel, training and de novo sequencing
-functions.
+- What's next: clean up the code of TrainingModel and training function.
 
 Those updates still work with the pre-trained model, training and testing data
 provided earlier (version 0.0.1 below).

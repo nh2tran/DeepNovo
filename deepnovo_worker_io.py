@@ -28,12 +28,13 @@ class WorkerIO(object):
     """
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO.__init__()")
+    print("WorkerIO: __init__()")
 
     # we currently use deepnovo_config to store both const & settings
     # the settings should be shown in __init__() to keep track carefully
     self.MZ_MAX = deepnovo_config.MZ_MAX
     self.batch_size = deepnovo_config.batch_size
+    self.header_seq = deepnovo_config.FLAGS.header_seq
 
     self.input_file = input_file
     self.output_file = output_file
@@ -60,7 +61,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO.close_input()")
+    print("WorkerIO: close_input()")
 
     self.input_handle.close()
 
@@ -69,7 +70,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO.close_output()")
+    print("WorkerIO: close_output()")
 
     self.output_handle.close()
 
@@ -78,7 +79,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerIO.get_spectrum()")
+    #~ print("WorkerIO: get_spectrum()")
 
     spectrum_list = []
     for location in location_batch:
@@ -121,7 +122,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO.get_location()")
+    print("WorkerIO: get_location()")
 
     location_list = []
     keyword = "BEGIN IONS"
@@ -140,7 +141,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO.open_input()")
+    print("WorkerIO: open_input()")
 
     self.input_handle = open(self.input_file, 'r')
 
@@ -149,7 +150,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO.open_output()")
+    print("WorkerIO: open_output()")
 
     self.output_handle = open(self.output_file, 'w')
     self._print_prediction_header()
@@ -159,7 +160,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO.split_location()")
+    print("WorkerIO: split_location()")
 
     location_batch_list = [self.location_list[i:(i+self.batch_size)]
                             for i in range(0,
@@ -174,14 +175,19 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerIO.write_prediction()")
+    #~ print("WorkerIO: write_prediction()")
 
     for predicted in predicted_batch:
       scan = predicted["scan"]
-      predicted_sequence = ",".join(predicted["sequence"])
-      predicted_score = "{0:.2f}".format(predicted["score"])
-      predicted_position_score = ",".join([
-          "{0:.2f}".format(x) for x in predicted["position_score"]])
+      if predicted["sequence"]:
+        predicted_sequence = ",".join(predicted["sequence"])
+        predicted_score = "{0:.2f}".format(predicted["score"])
+        predicted_position_score = ",".join([
+            "{0:.2f}".format(x) for x in predicted["position_score"]])
+      else: # if no peptide found, write empty sequence to the output file
+        predicted_sequence = ""
+        predicted_score = "-inf"
+        predicted_position_score = ""
       predicted_row = "\t".join([scan,
                                  predicted_sequence,
                                  predicted_score,
@@ -193,11 +199,12 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerIO._parse_spectrum()")
+    #~ print("WorkerIO: _parse_spectrum()")
 
     self.input_handle.seek(location)
     # BEGIN IONS
     line = self.input_handle.readline()
+    assert "BEGIN IONS" in line, "Error: wrong input BEGIN IONS"
     precursor_mz, charge, scan, raw_sequence = self._parse_spectrum_header()
     mz_list, intensity_list = self._parse_spectrum_ion()
 
@@ -208,24 +215,33 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerIO._parse_spectrum_header()")
+    #~ print("WorkerIO: _parse_spectrum_header()")
 
     # header TITLE
     line = self.input_handle.readline()
+    assert "TITLE=" in line, "Error: wrong input TITLE"
     # header PEPMASS
     line = self.input_handle.readline()
+    assert "PEPMASS=" in line, "Error: wrong input PEPMASS"
     precursor_mz = float(re.split('=|\n', line)[1])
     # header CHARGE
     line = self.input_handle.readline()
+    assert "CHARGE=" in line, "Error: wrong input CHARGE"
     charge = float(re.split('=|\+', line)[1])
     # header SCANS
     line = self.input_handle.readline()
+    assert "SCANS=" in line, "Error: wrong input SCANS"
     scan = re.split('=|\n', line)[1]
     # header RTINSECONDS
     line = self.input_handle.readline()
+    assert "RTINSECONDS=" in line, "Error: wrong input RTINSECONDS"
     # header SEQ
-    line = self.input_handle.readline()
-    raw_sequence = re.split('=|\n', line)[1]
+    if self.header_seq:
+      line = self.input_handle.readline()
+      assert "SEQ=" in line, "Error: wrong input SEQ"
+      raw_sequence = re.split('=|\n', line)[1]
+    else:
+      raw_sequence = ""
 
     return precursor_mz, charge, scan, raw_sequence
 
@@ -234,7 +250,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerIO._parse_spectrum_ion()")
+    #~ print("WorkerIO: _parse_spectrum_ion()")
 
     # ion
     mz_list = []
@@ -259,7 +275,7 @@ class WorkerIO(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerIO._print_prediction_header()")
+    print("WorkerIO: _print_prediction_header()")
 
     header_list = ["scan",
                    "predicted_sequence",

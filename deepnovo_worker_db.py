@@ -12,7 +12,7 @@ from __future__ import print_function
 import sys
 import time
 import re
-import multiprocessing as mp
+from random import shuffle
 
 from Bio import SeqIO
 from pyteomics import parser
@@ -25,6 +25,7 @@ from deepnovo_cython_modules import get_candidate_intensity
 
 class WorkerDB(object):
   """TODO(nh2tran): docstring.
+     This class contains the database search module.
      We use "db" for "database".
      We use "pepmod" to refer to a modified version of a "peptide"
   """
@@ -34,7 +35,7 @@ class WorkerDB(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerDB.__init__()")
+    print("WorkerDB: __init__()")
 
     # we currently use deepnovo_config to store both const & settings
     # the settings should be shown in __init__() to keep track carefully
@@ -44,15 +45,16 @@ class WorkerDB(object):
     self.num_missed_cleavage = deepnovo_config.num_missed_cleavage
     self.fixed_mod_list = deepnovo_config.fixed_mod_list
     self.var_mod_list = deepnovo_config.var_mod_list
-    self.mass_tolerance = deepnovo_config.mass_tolerance
-    self.ppm = deepnovo_config.ppm
+    self.precursor_mass_tolerance = deepnovo_config.precursor_mass_tolerance
+    self.precursor_mass_ppm = deepnovo_config.precursor_mass_ppm
+    self.decoy = deepnovo_config.FLAGS.decoy
     print("db_fasta_file = {0:s}".format(self.db_fasta_file))
     print("cleavage_rule = {0:s}".format(self.cleavage_rule))
     print("num_missed_cleavage = {0:d}".format(self.num_missed_cleavage))
     print("fixed_mod_list = {0}".format(self.fixed_mod_list))
     print("var_mod_list = {0}".format(self.var_mod_list))
-    print("mass_tolerance = {0:.4f}".format(self.mass_tolerance))
-    print("ppm = {0:.6f}".format(self.ppm))
+    print("precursor_mass_tolerance = {0:.4f}".format(self.precursor_mass_tolerance))
+    print("precursor_mass_ppm = {0:.6f}".format(self.precursor_mass_ppm))
 
     # data structure to store a db
     # all attributes will be built/loaded by build_db()
@@ -66,7 +68,7 @@ class WorkerDB(object):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerDB.build_db()")
+    print("WorkerDB: build_db()")
 
     # parse the input fasta file into a list of sequences
     # more about SeqIO and SeqRecord: http://biopython.org/wiki/SeqRecord
@@ -89,7 +91,7 @@ class WorkerDB(object):
 
     # skip peptides with undetermined amino acid 'X', or 'B'
     peptide_list = [list(peptide) for peptide in peptide_list
-                    if not ('X' in peptide or 'B' in peptide)]
+                    if not any(x in peptide for x in ['X', 'B', 'U', 'Z'])]
     peptide_count = len(peptide_list)
     print("Number of peptides: {0:d}".format(peptide_count))
 
@@ -117,13 +119,25 @@ class WorkerDB(object):
     self.pepmod_maxmass_array = pepmod_maxmass_array
 
 
-  def search_db(self, model, worker_io):
+  def search_db(self, model, worker_io, predicted_denovo_list=None):
     """TODO(nh2tran): docstring."""
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerDB.search_db()")
+    print("WorkerDB: search_db()")
 
-    print("WorkerDB.search_db() - open tensorflow session")
+    # move load/build db here?
+
+    # if provided, convert predicted_denovo_list to dictionary for easy lookup
+    denovo_peptide_dict = None
+    if predicted_denovo_list is not None:
+      print("WorkerDB: search_db() - read denovo peptides")
+      denovo_peptide_dict = {}
+      for predicted in predicted_denovo_list:
+        scan = predicted["scan"]
+        sequence = predicted["sequence"]
+        denovo_peptide_dict[scan] = sequence
+
+    print("WorkerDB: search_db() - open tensorflow session")
     session = tf.Session()
     model.restore_model(session)
 
@@ -133,13 +147,16 @@ class WorkerDB(object):
     worker_io.open_output()
 
     print("".join(["="] * 80)) # section-separating line
-    print("WorkerDB.search_db() - search loop")
+    print("WorkerDB: search_db() - search loop")
 
     for index, location_batch in enumerate(worker_io.location_batch_list):
       print("Read {0:d}/{1:d} batches".format(index + 1,
                                               worker_io.location_batch_count))
       spectrum_batch = worker_io.get_spectrum(location_batch)
-      predicted_batch = self._search_db_batch(spectrum_batch, model, session)
+      predicted_batch = self._search_db_batch(spectrum_batch,
+                                              model,
+                                              session,
+                                              denovo_peptide_dict)
       worker_io.write_prediction(predicted_batch)
 
     print("Total spectra: {0:d}".format(worker_io.spectrum_count["total"]))
@@ -152,129 +169,84 @@ class WorkerDB(object):
     session.close()
 
 
-  def _search_db_batch(self, spectrum_batch, model, session):
-    """TODO(nh2tran): docstring."""
+  def _compute_peptide_mass(self, peptide):
+    """TODO(nh2tran): docstring.
+    """
+
+    #~ print("".join(["="] * 80)) # section-separating line ===
+    #~ print("WorkerDB: _compute_peptide_mass()")
+
+    peptide_mass = (deepnovo_config.mass_N_terminus
+                    + sum(deepnovo_config.mass_AA[aa] for aa in peptide)
+                    + deepnovo_config.mass_C_terminus)
+
+    return peptide_mass
+
+
+  def _expand_peptide_modification(self, peptide):
+    """TODO(nh2tran): docstring.
+       May also use parser.isoforms
+    """
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerDB._search_db_batch()")
+    #~ print("WorkerDB: _expand_peptide_modification()")
 
-    # initialize the lstm using the spectrum
-    # for faster speed, we initialize the whole spectrum_batch instead of 1-by-1
-    input_feed = {}
-    spectrum_holder = np.array([spectrum["spectrum_holder"]
-                                for spectrum in spectrum_batch])
-    input_feed[model.input_dict["spectrum"].name] = spectrum_holder
-    output_feed = [model.output_forward["lstm_state0"],
-                   model.output_backward["lstm_state0"]]
-    ((state0_c_forward, state0_h_forward),
-     (state0_c_backward, state0_h_backward)) = session.run(fetches=output_feed,
-                                                           feed_dict=input_feed)
+    # recursively add all modifications
+    pepmod_list = [peptide] # the first entry without any modifications
+    mod_count = 0
+    for position, aa in enumerate(peptide):
+      if aa in self.var_mod_list:
+        mod_count += 1
+        # add modification of this position to all peptides in the current list
+        new_mod_list = []
+        for pepmod in pepmod_list:
+          new_mod = pepmod[:]
+          new_mod[position] = aa + 'mod'
+          new_mod_list.append(new_mod)
+        pepmod_list = pepmod_list + new_mod_list
+    # sanity check of the recursive iteration
+    assert len(pepmod_list) == pow(2, mod_count), (
+        "Wrong peptide expansion!")
 
-    predicted_batch = []
-    # we search spectrum by spectrum
-    # a faster way is to process them in parallel, but hard to debug
-    for spectrum_index, spectrum in enumerate(spectrum_batch):
+    return pepmod_list
 
-      # filter by precursor mass
-      # example: [['M', 'D', 'K', 'F', 'Nmod', 'K', 'K']]
-      candidate_list = self._filter_by_mass(spectrum["precursor_mass"])
 
-      # add special GO/EOS and reverse
-      # example: [['_GO', 'M', 'D', 'K', 'F', 'Nmod', 'K', 'K', '_EOS']]
-      candidate_forward_list = [[deepnovo_config._GO] + x + [deepnovo_config._EOS]
-                                for x in candidate_list]
-      candidate_backward_list = [x[::-1] for x in candidate_forward_list]
+  def _filter_by_mass(self, precursor_mass):
+    """TODO(nh2tran): docstring.
+    """
 
-      # add PAD to all candidates to the same max length
-      # [['_GO', 'M', 'D', 'K', 'F', 'Nmod', 'K', 'K', '_EOS', '_PAD', '_PAD']]
-      # due to the same precursor mass, candidates have very similar lengths
-      candidate_len_list = [len(x) for x in candidate_list]
-      candidate_maxlen = max(candidate_len_list)
-      for index, length in enumerate(candidate_len_list):
-        if length < candidate_maxlen:
-          pad_size = candidate_maxlen - length
-          candidate_forward_list[index] += [deepnovo_config._PAD] * pad_size
-          candidate_backward_list[index] += [deepnovo_config._PAD] * pad_size
-      
-      # score the spectrum against its candidates
-      #   using the forward model
-      logprob_forward_list = self._score_spectrum(
-          spectrum["precursor_mass"],
-          spectrum["spectrum_original_forward"],
-          state0_c_forward[spectrum_index],
-          state0_h_forward[spectrum_index],
-          candidate_forward_list,
-          model,
-          model.output_forward["logprob"],
-          model.output_forward["lstm_state"],
-          session,
-          direction=0)
-      #   and using the backward model
-      logprob_backward_list = self._score_spectrum(
-          spectrum["precursor_mass"],
-          spectrum["spectrum_original_backward"],
-          state0_c_backward[spectrum_index],
-          state0_h_backward[spectrum_index],
-          candidate_backward_list,
-          model,
-          model.output_backward["logprob"],
-          model.output_backward["lstm_state"],
-          session,
-          direction=1)
+    #~ print("".join(["="] * 80)) # section-separating line
+    #~ print("WorkerDB: _filter_by_mass()")
 
-      # note that the candidates are grouped into minibatches
-      # === candidate_len ===
-      # s
-      # i
-      # z
-      # e
-      # =====================
-      # logprob_forward_list is a list of candidate_maxlen arrays of shape
-      #   [minibatch_size, 26]
-      # each row is log of probability distribution over 26 classes/symbols
+    # use precursor_mass_ppm instead of absolute precursor_mass_tolerance
+    #~ precursor_mass_tolerance = self.precursor_mass_tolerance
+    precursor_mass_tolerance = self.precursor_mass_ppm * precursor_mass
 
-      # find the best scoring candidate
-      predicted = {"scan": "",
-                   "sequence": [],
-                   "score": -float("inf"),
-                   "position_score": []}
+    # 1st filter by the peptide mass and the max pepmod mass
+    filter1_index = np.flatnonzero(np.logical_and(
+        np.less_equal(self.peptide_mass_array,
+                      precursor_mass + precursor_mass_tolerance),
+        np.greater_equal(self.pepmod_maxmass_array,
+                         precursor_mass - precursor_mass_tolerance)))
 
-      for index, candidate in enumerate(candidate_list):
+    # find all possible modifications
+    pepmod_list = []
+    for index in filter1_index:
+      peptide = self.peptide_list[index]
+      pepmod_list += self._expand_peptide_modification(peptide)
+    pepmod_mass_array = np.array([self._compute_peptide_mass(pepmod)
+                                  for pepmod in pepmod_list])
 
-        # only calculate score on the actual length, not on GO/EOS/PAD
-        candidate_len = candidate_len_list[index]
+    # 2nd filter by exact pepmod mass
+    filter2_index = np.flatnonzero(np.logical_and(
+        np.less_equal(pepmod_mass_array,
+                      precursor_mass + precursor_mass_tolerance),
+        np.greater_equal(pepmod_mass_array,
+                         precursor_mass - precursor_mass_tolerance)))
 
-        # align forward and backward logprob
-        logprob_forward = [logprob_forward_list[position][index]
-                           for position in range(candidate_len)]
-        logprob_backward = [logprob_backward_list[position][index]
-                            for position in range(candidate_len)]
-        logprob_backward = logprob_backward[::-1]
+    candidate_list = [pepmod_list[x] for x in filter2_index]
 
-        # score is the sum of logprob(AA) of the candidate in both directions
-        #   averaged by the candidate length
-        position_score = []
-        for position in range(candidate_len):
-          AA = candidate[position]
-          AA_id = deepnovo_config.vocab[AA]
-          position_score.append(logprob_forward[position][AA_id]
-                                + logprob_backward[position][AA_id])
-        score = sum(position_score) / candidate_len
-        if score > predicted["score"]:
-          predicted["scan"] = spectrum["scan"]
-          predicted["sequence"] = candidate
-          predicted["score"] = score
-          predicted["position_score"] = position_score
-        #~ if (spectrum["scan"]=="F1:11201"):
-          #~ print(score, candidate)
-          #~ print(spectrum["precursor_mass"])
-          #~ print(self._compute_peptide_mass(['Y', 'Y', 'G', 'G', 'N', 'E', 'H', 'I', 'D', 'R']))
-          #~ print(self._compute_peptide_mass(['A', 'A', 'E', 'E', 'N', 'F', 'N', 'A', 'D', 'D', 'K']))
-      #~ if (spectrum["scan"]=="F1:11201"):
-        #~ sys.exit()
-      predicted_batch.append(predicted)
-
-    return predicted_batch
+    return candidate_list
 
 
   def _score_spectrum(self,
@@ -291,7 +263,7 @@ class WorkerDB(object):
     """TODO(nh2tran): docstring."""
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerDB._score()")
+    #~ print("WorkerDB: _score()")
 
     # convert symbols into id
     candidate_list = [[deepnovo_config.vocab[x] for x in candidate] 
@@ -356,82 +328,160 @@ class WorkerDB(object):
     return output_logprob_list
 
 
-  def _compute_peptide_mass(self, peptide):
+  def _search_db_batch(self,
+                       spectrum_batch,
+                       model,
+                       session,
+                       denovo_peptide_dict):
     """TODO(nh2tran): docstring.
-    """
-
-    #~ print("".join(["="] * 80)) # section-separating line ===
-    #~ print("WorkerDB._compute_peptide_mass()")
-
-    peptide_mass = (deepnovo_config.mass_N_terminus
-                    + sum(deepnovo_config.mass_AA[aa] for aa in peptide)
-                    + deepnovo_config.mass_C_terminus)
-
-    return peptide_mass
-
-
-  def _expand_peptide_modification(self, peptide):
-    """TODO(nh2tran): docstring.
-       May also use parser.isoforms
-    """
-
-    #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerDB._expand_peptide_modification()")
-
-    # recursively add all modifications
-    pepmod_list = [peptide] # the first entry without any modifications
-    mod_count = 0
-    for position, aa in enumerate(peptide):
-      if aa in self.var_mod_list:
-        mod_count += 1
-        # add modification of this position to all peptides in the current list
-        new_mod_list = []
-        for pepmod in pepmod_list:
-          new_mod = pepmod[:]
-          new_mod[position] = aa + 'mod'
-          new_mod_list.append(new_mod)
-        pepmod_list = pepmod_list + new_mod_list
-    # sanity check of the recursive iteration
-    assert len(pepmod_list) == pow(2, mod_count), (
-        "Wrong peptide expansion!")
-
-    return pepmod_list
-
-
-  def _filter_by_mass(self, precursor_mass):
-    """TODO(nh2tran): docstring.
+       Inputs:
+         spectrum_batch: a list of spectrum, each is a dictionary
+           spectrum["scan"]
+           spectrum["precursor_mass"]
+           spectrum["spectrum_holder"]
+           spectrum["spectrum_original_forward"]
+           spectrum["spectrum_original_backward"]
+       Outputs:
+         predicted_batch: a list of predicted, each is a dictionary
+           predicted["scan"]
+           predicted["sequence"]
+           predicted["score"]
+           predicted["position_score"]
     """
 
     #~ print("".join(["="] * 80)) # section-separating line
-    #~ print("WorkerDB._filter_by_mass()")
+    #~ print("WorkerDB: _search_db_batch()")
 
-    # use ppm instead of absolute mass_tolerance
-    #~ mass_tolerance = self.mass_tolerance
-    mass_tolerance = self.ppm * precursor_mass
+    # initialize the lstm using the spectrum
+    # for faster speed, we initialize the whole spectrum_batch instead of 1-by-1
+    input_feed = {}
+    spectrum_holder = np.array([spectrum["spectrum_holder"]
+                                for spectrum in spectrum_batch])
+    input_feed[model.input_dict["spectrum"].name] = spectrum_holder
+    output_feed = [model.output_forward["lstm_state0"],
+                   model.output_backward["lstm_state0"]]
+    ((state0_c_forward, state0_h_forward),
+     (state0_c_backward, state0_h_backward)) = session.run(fetches=output_feed,
+                                                           feed_dict=input_feed)
 
-    # 1st filter by the peptide mass and the max pepmod mass
-    filter1_index = np.flatnonzero(np.logical_and(
-        np.less_equal(self.peptide_mass_array,
-                      precursor_mass + mass_tolerance),
-        np.greater_equal(self.pepmod_maxmass_array,
-                         precursor_mass - mass_tolerance)))
+    predicted_batch = []
+    # we search spectrum by spectrum
+    # a faster way is to process them in parallel, but hard to debug
+    for spectrum_index, spectrum in enumerate(spectrum_batch):
 
-    # find all possible modifications
-    pepmod_list = []
-    for index in filter1_index:
-      peptide = self.peptide_list[index]
-      pepmod_list += self._expand_peptide_modification(peptide)
-    pepmod_mass_array = np.array([self._compute_peptide_mass(pepmod)
-                                  for pepmod in pepmod_list])
+      predicted = {"scan": spectrum["scan"],
+                   "sequence": [],
+                   "score": -float("inf"),
+                   "position_score": []}
 
-    # 2nd filter by exact pepmod mass
-    filter2_index = np.flatnonzero(np.logical_and(
-        np.less_equal(pepmod_mass_array,
-                      precursor_mass + mass_tolerance),
-        np.greater_equal(pepmod_mass_array,
-                         precursor_mass - mass_tolerance)))
+      # filter by precursor mass
+      # example: [['M', 'D', 'K', 'F', 'Nmod', 'K', 'K']]
+      precursor_mass = spectrum["precursor_mass"]
+      candidate_list = self._filter_by_mass(precursor_mass)
 
-    candidate_list = [pepmod_list[x] for x in filter2_index]
+      # add denovo peptide if provided
+      scan = spectrum["scan"]
+      if denovo_peptide_dict is not None and scan in denovo_peptide_dict:
+        sequence = denovo_peptide_dict[scan]
+        # TODO(nh2tran): change the precursor_mass_tolerance of denovo
+        sequence_mass = self._compute_peptide_mass(sequence)
+        precursor_mass_tolerance = precursor_mass * self.precursor_mass_ppm
+        if abs(precursor_mass - sequence_mass) <= precursor_mass_tolerance:
+          candidate_list.append(sequence)
 
-    return candidate_list
+      # if no candidate found, return empty sequence for this spectrum.
+      if not candidate_list:
+        predicted_batch.append(predicted)
+        continue
+
+      # if decoy is activated, randomly shuffle amino acids to form decoy db.
+      if self.decoy:
+        for x in candidate_list:
+          shuffle(x) # this function works in place and returns None.
+
+      # add special GO/EOS and reverse
+      # example: [['_GO', 'M', 'D', 'K', 'F', 'Nmod', 'K', 'K', '_EOS']]
+      candidate_forward_list = [[deepnovo_config._GO] + x + [deepnovo_config._EOS]
+                                for x in candidate_list]
+      candidate_backward_list = [x[::-1] for x in candidate_forward_list]
+
+      # add PAD to all candidates to the same max length
+      # [['_GO', 'M', 'D', 'K', 'F', 'Nmod', 'K', 'K', '_EOS', '_PAD', '_PAD']]
+      # due to the same precursor mass, candidates have very similar lengths
+      candidate_len_list = [len(x) for x in candidate_list]
+      candidate_maxlen = max(candidate_len_list)
+      for index, length in enumerate(candidate_len_list):
+        if length < candidate_maxlen:
+          pad_size = candidate_maxlen - length
+          candidate_forward_list[index] += [deepnovo_config._PAD] * pad_size
+          candidate_backward_list[index] += [deepnovo_config._PAD] * pad_size
+      
+      # score the spectrum against its candidates
+      #   using the forward model
+      logprob_forward_list = self._score_spectrum(
+          spectrum["precursor_mass"],
+          spectrum["spectrum_original_forward"],
+          state0_c_forward[spectrum_index],
+          state0_h_forward[spectrum_index],
+          candidate_forward_list,
+          model,
+          model.output_forward["logprob"],
+          model.output_forward["lstm_state"],
+          session,
+          direction=0)
+      #   and using the backward model
+      logprob_backward_list = self._score_spectrum(
+          spectrum["precursor_mass"],
+          spectrum["spectrum_original_backward"],
+          state0_c_backward[spectrum_index],
+          state0_h_backward[spectrum_index],
+          candidate_backward_list,
+          model,
+          model.output_backward["logprob"],
+          model.output_backward["lstm_state"],
+          session,
+          direction=1)
+
+      # note that the candidates are grouped into minibatches
+      # === candidate_len ===
+      # s
+      # i
+      # z
+      # e
+      # =====================
+      # logprob_forward_list is a list of candidate_maxlen arrays of shape
+      #   [minibatch_size, 26]
+      # each row is log of probability distribution over 26 classes/symbols
+
+      # find the best scoring candidate
+      for index, candidate in enumerate(candidate_list):
+
+        # only calculate score on the actual length, not on GO/EOS/PAD
+        candidate_len = candidate_len_list[index]
+
+        # align forward and backward logprob
+        logprob_forward = [logprob_forward_list[position][index]
+                           for position in range(candidate_len)]
+        logprob_backward = [logprob_backward_list[position][index]
+                            for position in range(candidate_len)]
+        logprob_backward = logprob_backward[::-1]
+
+        # score is the sum of logprob(AA) of the candidate in both directions
+        #   averaged by the candidate length
+        position_score = []
+        for position in range(candidate_len):
+          AA = candidate[position]
+          AA_id = deepnovo_config.vocab[AA]
+          position_score.append(logprob_forward[position][AA_id]
+                                + logprob_backward[position][AA_id])
+        score = sum(position_score) / candidate_len
+        if score > predicted["score"]:
+          predicted["sequence"] = candidate
+          predicted["score"] = score
+          predicted["position_score"] = position_score
+
+      predicted_batch.append(predicted)
+
+    return predicted_batch
+
 
