@@ -50,7 +50,7 @@ sequencing and database search are now available.
 
 The pre-trained model, training and testing data can be downloaded from here:
 
-https://drive.google.com/open?id=0By9IxqHK5MdWalJLSGliWW1RY2c
+https://drive.google.com/drive/folders/1qB8wDBnnm1qw0wDuSCxOoxkyV-b4LkTo?usp=sharing
 
 The following updates are also included in this version: 
 
